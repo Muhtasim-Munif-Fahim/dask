@@ -296,6 +296,13 @@ def _wrap_unary_expr_op(self, op=None):
     return new_collection(getattr(self.expr, op)())
 
 
+def _partitions_equal(left, right):
+    return pd.Series(
+        [((left == right) | (left.isna() & right.isna())).all(axis=None)],
+        dtype="bool",
+    )
+
+
 _WARN_ANNOTATIONS = True
 #
 # Collection classes
@@ -3212,16 +3219,25 @@ class DataFrame(FrameBase):
 
         # Index values and order must match
         left_index = self.index.compute()
-        right_index = other.index.compute() if isinstance(other, DataFrame) else other.index
+        right_index = (
+            other.index.compute() if isinstance(other, DataFrame) else other.index
+        )
         if not left_index.equals(right_index):
             return False
         if len(left_index) == 0:
             return True
 
-        # NaN-aware elementwise comparison; NaNs in the same location are
-        # considered equal
-        mask = (self == other) | (self.isna() & other.isna())
-        return bool(mask.all(axis=None).compute().all())
+        # Compare partitions directly with an explicitly provided meta so that
+        # metadata never has to be evaluated through pandas. NaNs in the same
+        # location are considered equal
+        mask = elemwise(
+            _partitions_equal,
+            self,
+            other,
+            meta=pd.Series(dtype="bool"),
+            transform_divisions=False,
+        )
+        return bool(mask.all().compute())
 
     @insert_meta_param_description(pad=12)
     def apply(self, function, *args, meta=no_default, axis=0, **kwargs):
