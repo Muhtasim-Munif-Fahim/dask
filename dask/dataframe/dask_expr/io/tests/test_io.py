@@ -467,8 +467,8 @@ def test_from_dict():
 
 def test_from_dict_with_dask_array():
     pytest.importorskip("dask.array")
-    x = da.from_array(np.array([1, 2, 3, 4]), chunks=2)
-    y = da.from_array(np.array([10, 11, 12, 13]), chunks=2)
+    x = da.from_array(np.array([1, 2, 3, 4], dtype=np.int64), chunks=2)
+    y = da.from_array(np.array([10, 11, 12, 13], dtype=np.int64), chunks=2)
     data = {"a": x, "B": y}
     result = from_dict(data, npartitions=2)
     expected = pd.DataFrame({"a": [1, 2, 3, 4], "B": [10, 11, 12, 13]})
@@ -498,7 +498,7 @@ def test_from_dict_with_dask_dataframe():
 
 def test_from_dict_with_mixed_dask_and_scalar():
     pytest.importorskip("dask.array")
-    x = da.from_array(np.array([1, 2, 3, 4]), chunks=2)
+    x = da.from_array(np.array([1, 2, 3, 4], dtype=np.int64), chunks=2)
     data = {"a": x, "B": 10}
     result = from_dict(data, npartitions=2)
     expected = pd.DataFrame({"a": [1, 2, 3, 4], "B": [10, 10, 10, 10]})
