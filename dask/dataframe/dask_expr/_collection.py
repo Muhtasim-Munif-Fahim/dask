@@ -297,10 +297,17 @@ def _wrap_unary_expr_op(self, op=None):
 
 
 def _partitions_equal(left, right):
-    return pd.Series(
-        [((left == right) | (left.isna() & right.isna())).all(axis=None)],
-        dtype="bool",
-    )
+    # Column-by-column 1D comparisons: DataFrame-level binary ops route
+    # through pandas operate_blockwise, which fails on older pandas for
+    # pyarrow-backed data (ArrowExtensionArray does not support reshape).
+    equal = True
+    for pos in range(len(left.columns)):
+        lcol = left.iloc[:, pos]
+        rcol = right.iloc[:, pos]
+        if not ((lcol == rcol) | (lcol.isna() & rcol.isna())).all():
+            equal = False
+            break
+    return pd.Series(equal, dtype="bool")
 
 
 _WARN_ANNOTATIONS = True
